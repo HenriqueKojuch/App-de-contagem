@@ -1,0 +1,131 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Contador de Estoque</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body.light { background-color: #ffffff; color: #000000; }
+        body.dark { background-color: #121212; color: #ffffff; }
+        body.blue { background-color: #e0f7fa; color: #006064; }
+        .container { max-width: 400px; margin: auto; padding: 10px; }
+        input, button, select { width: 100%; margin: 5px 0; padding: 10px; font-size: 1em; }
+        table { width: 100%; margin-top: 10px; border-collapse: collapse; }
+        th, td { border: 1px solid #ccc; padding: 5px; text-align: center; }
+        .scanner { width: 100%; margin-top: 10px; }
+    </style>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="light">
+    <div class="container">
+        <h2>Contador de Estoque</h2>
+        <select id="theme" onchange="changeTheme()">
+            <option value="light">Claro</option>
+            <option value="dark">Escuro</option>
+            <option value="blue">Azul</option>
+        </select>
+        <input id="codigo" placeholder="Código" inputmode="numeric">
+        <button onclick="startScanner()">📷 Escanear Código</button>
+        <div id="reader" class="scanner" style="display:none;"></div>
+        <input id="paletes" placeholder="Paletes" inputmode="numeric">
+        <input id="caixas" placeholder="Caixas" inputmode="numeric">
+        <input id="unidades" placeholder="Unidades" inputmode="numeric">
+        <input id="validade" type="date">
+        <button onclick="adicionar()">➕ Incluir</button>
+        <button onclick="exportarCSV()">📤 Exportar CSV</button>
+        <button onclick="limparTudo()">🗑️ Limpar Tudo</button>
+        <table id="tabela">
+            <thead>
+                <tr><th>Código</th><th>Paletes</th><th>Caixas</th><th>Unidades</th><th>Validade</th><th>Ação</th></tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+    <script>
+        const tabela = document.querySelector("#tabela tbody");
+        const campos = ["codigo", "paletes", "caixas", "unidades", "validade"];
+
+        campos.forEach((id, idx) => {
+            document.getElementById(id).addEventListener("keydown", e => {
+                if (e.key === "Enter") {
+                    e.preventDefault();
+                    if (idx < campos.length - 1) {
+                        document.getElementById(campos[idx + 1]).focus();
+                    } else {
+                        adicionar();
+                    }
+                }
+            });
+        });
+
+        function adicionar() {
+            const dados = campos.map(id => {
+                const val = document.getElementById(id).value;
+                return val === "" ? (id === "validade" ? "" : "0") : val;
+            });
+            const tr = document.createElement("tr");
+            dados.forEach(d => {
+                const td = document.createElement("td");
+                td.textContent = d;
+                tr.appendChild(td);
+            });
+            const tdAcao = document.createElement("td");
+            const btnDel = document.createElement("button");
+            btnDel.textContent = "❌";
+            btnDel.onclick = () => tr.remove();
+            tdAcao.appendChild(btnDel);
+            tr.appendChild(tdAcao);
+            tabela.appendChild(tr);
+            campos.forEach(id => document.getElementById(id).value = "");
+            document.getElementById("codigo").focus();
+        }
+
+        function exportarCSV() {
+            let csv = "Código,Paletes,Caixas,Unidades,Validade\n";
+            tabela.querySelectorAll("tr").forEach(tr => {
+                const dados = Array.from(tr.querySelectorAll("td")).slice(0, 5).map(td => td.textContent);
+                csv += dados.join(",") + "\n";
+            });
+            const blob = new Blob([csv], { type: "text/csv" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "contagem.csv";
+            a.click();
+        }
+
+        function limparTudo() {
+            if (confirm("Tem certeza que deseja limpar toda a contagem?")) {
+                tabela.innerHTML = "";
+            }
+        }
+
+        function changeTheme() {
+            document.body.className = document.getElementById("theme").value;
+        }
+
+        let scanner = null;
+        function startScanner() {
+            const reader = document.getElementById("reader");
+            reader.style.display = "block";
+            if (!scanner) {
+                scanner = new Html5Qrcode("reader");
+            }
+            scanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+                code => {
+                    document.getElementById("codigo").value = code;
+                    scanner.stop().then(() => {
+                        reader.style.display = "none";
+                        document.getElementById("codigo").focus();
+                    });
+                },
+                error => {}
+            ).catch(err => {
+                alert("Erro ao acessar a câmera: " + err);
+            });
+        }
+    </script>
+</body>
+</html>
